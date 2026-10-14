@@ -93,19 +93,20 @@ struct TerminalGridSelection: Equatable, Sendable {
         case end
     }
 
-    /// The cells on each row, for a grid `columns` wide.
+    /// The cells on each row, for a grid `columns` wide. Columns past the
+    /// grid, which an estimated cell width can produce, fold onto its edge.
     func spans(columns: Int) -> [TerminalGridSpan] {
         let start = start
         let end = end
         guard columns > 0 else { return [] }
         if start.row == end.row {
-            return [TerminalGridSpan(row: start.row, columns: start.column...end.column)]
+            return [TerminalGridSpan(row: start.row, columns: start.column...max(end.column, start.column))]
         }
-        var spans = [TerminalGridSpan(row: start.row, columns: start.column...columns)]
+        var spans = [TerminalGridSpan(row: start.row, columns: min(start.column, columns)...columns)]
         for row in (start.row + 1)..<end.row {
             spans.append(TerminalGridSpan(row: row, columns: 1...columns))
         }
-        spans.append(TerminalGridSpan(row: end.row, columns: 1...end.column))
+        spans.append(TerminalGridSpan(row: end.row, columns: 1...max(end.column, 1)))
         return spans
     }
 }
@@ -175,7 +176,11 @@ enum TerminalSelectionText {
         for row in 1..<max(selection.end.row, 1) {
             end += (grid.row(row)?.utf16Count ?? 0) + 1
         }
-        end += endRow.utf16Offset(atColumn: selection.end.column + 1)
+        // Past the whole character covering the end cell, so a wide character
+        // selected by its first cell stays in, as it does in the copied text.
+        let endColumn = endRow.characterIndex(atColumn: selection.end.column)
+            .map { endRow.lastCell(ofCharacterAt: $0) } ?? selection.end.column
+        end += endRow.utf16Offset(atColumn: endColumn + 1)
         return NSRange(location: location, length: max(end - location, 0))
     }
 }

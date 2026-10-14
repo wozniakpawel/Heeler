@@ -92,6 +92,18 @@ struct TerminalTextSelectionTests {
         #expect(TerminalSelectionText.utf16Range(of: selection, in: grid) == NSRange(location: 2, length: 8))
         let single = TerminalGridSelection(span: TerminalGridSpan(row: 2, columns: 2...4))
         #expect(TerminalSelectionText.utf16Range(of: single, in: grid) == NSRange(location: 8, length: 3))
+        // Ending on the first cell of a wide character keeps the whole character.
+        let wideEnd = TerminalGridSelection(span: TerminalGridSpan(row: 1, columns: 1...3))
+        #expect(TerminalSelectionText.utf16Range(of: wideEnd, in: grid) == NSRange(location: 0, length: 3))
+        #expect(TerminalSelectionText.text(of: wideEnd, in: grid) == "ab日")
+    }
+
+    @Test func spansFoldColumnsBeyondTheGridOntoItsEdge() {
+        let selection = TerminalGridSelection(anchor: Self.cell(1, 12), focus: Self.cell(2, 3))
+        #expect(selection.spans(columns: 10) == [
+            TerminalGridSpan(row: 1, columns: 10...10),
+            TerminalGridSpan(row: 2, columns: 1...3),
+        ])
     }
 
     @Test func gridRectsInvertTheCellMapping() {

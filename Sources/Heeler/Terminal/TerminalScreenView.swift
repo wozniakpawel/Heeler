@@ -811,7 +811,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     private var dictationEndTask: Task<Void, Never>?
     /// How long after the keyboard leaves dictation mode a final result may
     /// still arrive and belong to the same dictation.
-    private static let dictationEndGracePeriod: Duration = .milliseconds(400)
+    private static let dictationEndGracePeriod: Duration = .milliseconds(750)
     /// Test seam standing in for the keyboard's input mode, which the suite
     /// cannot switch to dictation.
     var dictationInputModeOverride: Bool?
@@ -848,6 +848,9 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     /// In-place text selection and its Copy menu; see
     /// ``TerminalSelectionController``.
     private lazy var selectionController = TerminalSelectionController(terminal: self)
+    /// The link the tap gesture found when it decided to begin, for the tap
+    /// handler that follows, so the viewport is read once per tap.
+    private var linkUnderTap: TerminalViewportLink?
 
     override var inputView: UIView? {
         terminalInputView
@@ -1239,13 +1242,6 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         guard let url = TerminalLinkPolicy.url(for: link.target) else { return false }
         onOpenLink?(url)
         return true
-    }
-
-    /// Opens the web link under `point`. False when nothing there is one.
-    @discardableResult
-    func openLink(at point: CGPoint) -> Bool {
-        guard let link = link(at: point) else { return false }
-        return open(link)
     }
 
     private func scheduleViewportSnapshot() {
@@ -1982,11 +1978,16 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
             // web link, which a tap opens. A running flick claims any tap
             // regardless, to halt itself.
             let location = tapGesture.location(in: self)
-            return modeTracker.tracksMouse
+            linkUnderTap = nil
+            if modeTracker.tracksMouse
                 || modeTracker.isAlternateScreen
                 || isTouchScrollMomentumRunning
                 || keyboardActivationRegion.contains(location)
-                || link(at: location) != nil
+            {
+                return true
+            }
+            linkUnderTap = link(at: location)
+            return linkUnderTap != nil
         }
         return super.gestureRecognizerShouldBegin(gestureRecognizer)
     }
@@ -2614,9 +2615,14 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     }
 
     func handleTap(at location: CGPoint) {
-        // A link under the finger is what the tap meant, ahead of the click
-        // and the keyboard; a flick in progress still only stops.
-        if !isTouchScrollMomentumRunning, openLink(at: location) {
+        // A link under the finger is what the tap meant, ahead of the click.
+        // The input row keeps its keyboard tap (a link typed there opens from
+        // a long press instead), and a flick in progress still only stops.
+        let foundLink = linkUnderTap
+        linkUnderTap = nil
+        if !isTouchScrollMomentumRunning, !keyboardActivationRegion.contains(location),
+            let link = foundLink ?? link(at: location), open(link)
+        {
             return
         }
         switch tapAction(at: location) {

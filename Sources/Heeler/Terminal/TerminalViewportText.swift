@@ -78,6 +78,19 @@ struct TerminalViewportRow: Equatable, Sendable {
         return !last.isWhitespace
     }
 
+    /// The row ends in a box-drawing or block character: the edge of a TUI's
+    /// frame or bar, which runs to the last column without wrapping.
+    var endsWithBorder: Bool {
+        guard let scalar = characters.last?.unicodeScalars.first else { return false }
+        return (0x2500...0x259F).contains(scalar.value)
+    }
+
+    /// The row begins with a visible character.
+    var startsWithText: Bool {
+        guard let first = characters.first else { return false }
+        return !first.isWhitespace
+    }
+
     /// The character covering `column`, or nil past the end of the text.
     func characterIndex(atColumn column: Int) -> Int? {
         guard column >= 1, let first = cellStarts.first, column >= first else { return nil }
@@ -145,15 +158,20 @@ struct TerminalViewportRows: Equatable, Sendable {
 
     var rowCount: Int { rows.count }
 
+    /// The rows joined with `\n`, as the reader produced them.
+    var text: String { rows.map(\.text).joined(separator: "\n") }
+
     func row(_ row: Int) -> TerminalViewportRow? {
         guard row >= 1, row <= rows.count else { return nil }
         return rows[row - 1]
     }
 
-    /// Whether `row` continues onto the next one.
+    /// Whether `row` continues onto the next one: it runs to the last column,
+    /// does not end in a frame border, and the next row carries text. A TUI
+    /// paints whole rows too, so a full row alone is not a soft wrap.
     func wraps(_ row: Int) -> Bool {
-        guard row < rows.count, let current = self.row(row) else { return false }
-        return current.isFull(columns: columns)
+        guard let current = self.row(row), let next = self.row(row + 1) else { return false }
+        return current.isFull(columns: columns) && !current.endsWithBorder && next.startsWithText
     }
 
     /// The rows that print as one line with `row`: back to the first row that

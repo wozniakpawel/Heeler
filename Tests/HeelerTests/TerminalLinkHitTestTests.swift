@@ -94,4 +94,15 @@ struct TerminalLinkHitTestTests {
         #expect(grid.logicalLineRows(containing: 5) == 4...5)
         #expect(grid.logicalLineRows(containing: 6) == nil)
     }
+
+    @Test func aFramedTUIRowDoesNotWrapAndNeitherDoesARowFollowedByABlank() {
+        let grid = Self.grid(["│ hello  │", "│ world  │", "full line1", " indented", "lastrow"], columns: 10)
+        #expect(!grid.wraps(1))
+        #expect(!grid.wraps(2))
+        // Row 3 is full but row 4 opens with a blank: the line ended there.
+        #expect(!grid.wraps(3))
+        #expect(!grid.wraps(5))
+        #expect(grid.logicalLineRows(containing: 2) == 2...2)
+        #expect(grid.text == "│ hello  │\n│ world  │\nfull line1\n indented \nlastrow   ")
+    }
 }

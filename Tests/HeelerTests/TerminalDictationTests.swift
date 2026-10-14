@@ -90,7 +90,7 @@ struct TerminalDictationTests {
             name: UITextInputMode.currentInputModeDidChangeNotification, object: nil)
         #expect(terminal.isDictating)
 
-        try await Task.sleep(for: .milliseconds(700))
+        try await Task.sleep(for: .milliseconds(1_100))
         #expect(!terminal.isDictating)
         #expect(try await fixture.drain() == Data("Hi".utf8))
     }

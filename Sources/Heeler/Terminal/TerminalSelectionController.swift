@@ -3,12 +3,22 @@ import UIKit
 /// Draws the in-place selection over the terminal: a tinted band over the
 /// selected cells and, like a text view, a handle at each end. The view never
 /// takes touches; the terminal hit-tests the handles itself.
+///
+/// Shape layers, not `draw(_:)`: a drawn view the size of the terminal would
+/// hold a full-screen bitmap for every retained terminal, almost always empty.
 final class TerminalSelectionOverlayView: UIView {
     static let knobDiameter: CGFloat = 10
     static let barWidth: CGFloat = 2
 
+    private let bandLayer = CAShapeLayer()
+    private let handleLayer = CAShapeLayer()
+
     var spanRects: [CGRect] = [] {
-        didSet { setNeedsDisplay() }
+        didSet {
+            guard oldValue != spanRects else { return }
+            isHidden = spanRects.isEmpty
+            updatePaths()
+        }
     }
 
     override init(frame: CGRect) {
@@ -16,11 +26,14 @@ final class TerminalSelectionOverlayView: UIView {
         isUserInteractionEnabled = false
         isOpaque = false
         backgroundColor = .clear
-        contentMode = .redraw
+        isHidden = true
         // Ghostty adds its render layer to the terminal after this view is
         // in place; the highlight must still draw above it.
         layer.zPosition = 1
+        layer.addSublayer(bandLayer)
+        layer.addSublayer(handleLayer)
         accessibilityIdentifier = "terminal.selection"
+        applyTint()
     }
 
     @available(*, unavailable)
@@ -50,28 +63,34 @@ final class TerminalSelectionOverlayView: UIView {
 
     override func tintColorDidChange() {
         super.tintColorDidChange()
-        setNeedsDisplay()
+        applyTint()
     }
 
-    override func draw(_ rect: CGRect) {
-        guard let context = UIGraphicsGetCurrentContext(), !spanRects.isEmpty else { return }
-        context.setFillColor(tintColor.withAlphaComponent(0.3).cgColor)
+    private func applyTint() {
+        bandLayer.fillColor = tintColor.withAlphaComponent(0.3).cgColor
+        handleLayer.fillColor = tintColor.cgColor
+    }
+
+    private func updatePaths() {
+        let band = UIBezierPath()
         for spanRect in spanRects {
-            context.fill(spanRect)
+            band.append(UIBezierPath(rect: spanRect))
         }
-        context.setFillColor(tintColor.cgColor)
+        let handles = UIBezierPath()
         if let first = spanRects.first, let knob = startKnob {
-            context.fill(CGRect(
+            handles.append(UIBezierPath(rect: CGRect(
                 x: first.minX - Self.barWidth / 2, y: first.minY,
-                width: Self.barWidth, height: first.height))
-            context.fillEllipse(in: knob)
+                width: Self.barWidth, height: first.height)))
+            handles.append(UIBezierPath(ovalIn: knob))
         }
         if let last = spanRects.last, let knob = endKnob {
-            context.fill(CGRect(
+            handles.append(UIBezierPath(rect: CGRect(
                 x: last.maxX - Self.barWidth / 2, y: last.minY,
-                width: Self.barWidth, height: last.height))
-            context.fillEllipse(in: knob)
+                width: Self.barWidth, height: last.height)))
+            handles.append(UIBezierPath(ovalIn: knob))
         }
+        bandLayer.path = band.cgPath
+        handleLayer.path = handles.cgPath
     }
 }
 
@@ -215,7 +234,7 @@ final class TerminalSelectionController: NSObject {
                 let grid = terminal.readViewportRows()
             else { return }
             self.grid = grid
-            viewportText = terminal.terminalSession.readViewportText() ?? ""
+            viewportText = grid.text
             editMenu?.dismissMenu()
             if let link = TerminalLinkHitTest.link(in: grid, row: cell.row, column: cell.column),
                 let linkSelection = TerminalGridSelection(spans: link.spans)
@@ -359,7 +378,11 @@ extension TerminalSelectionController: UIGestureRecognizerDelegate {
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard let terminal else { return false }
         if gestureRecognizer === longPress {
-            return terminal.gridPointMapper.cell(at: gestureRecognizer.location(in: terminal)) != nil
+            let point = gestureRecognizer.location(in: terminal)
+            if selection != nil, handle(at: point) != nil {
+                return false
+            }
+            return terminal.gridPointMapper.cell(at: point) != nil
         }
         if gestureRecognizer === handlePan {
             guard selection != nil,
