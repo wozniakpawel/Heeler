@@ -86,4 +86,15 @@ struct TerminalGridPointMapper {
         let row = Int(((point.y - origin.y) / cellSize.height).rounded(.down)) + 1
         return (min(max(column, 1), columns), min(max(row, 1), rows))
     }
+
+    /// Where the cells of `span` are drawn, for selection highlights and
+    /// edit-menu anchors. The inverse of ``cell(at:)``.
+    func rect(for span: TerminalGridSpan) -> CGRect {
+        let origin = gridOrigin
+        return CGRect(
+            x: origin.x + CGFloat(span.columns.lowerBound - 1) * cellSize.width,
+            y: origin.y + CGFloat(span.row - 1) * cellSize.height,
+            width: CGFloat(span.columns.count) * cellSize.width,
+            height: cellSize.height)
+    }
 }

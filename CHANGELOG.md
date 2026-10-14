@@ -10,7 +10,14 @@ Entries reference the pull request that made the change.
 ### Added
 
 - Tap a web link in an Agent's terminal or a Shell Terminal to open it. Links
-  that fold across several rows of a narrow screen open whole.
+  that fold across several rows of a narrow screen open whole, and a long
+  press on one offers Open Link and Copy Link.
+- Copy from the terminal the way you copy anywhere else on iOS: press and
+  hold to select the word under your finger, keep dragging to take more, then
+  drag either handle to adjust and tap Copy. Select All takes the whole
+  screen, and Select Text… still opens the visible text in a sheet for a
+  finer selection. The selection clears when you tap or scroll, or when the
+  Agent prints over it.
 - Read and search Heeler's connection guides in English or Simplified Chinese
   on the new documentation site, with navigation for overlay networks, Jump
   Hosts, Host Routes, and Windows setup, and copy any guide as Markdown. (#442)

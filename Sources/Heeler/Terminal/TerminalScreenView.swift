@@ -845,6 +845,10 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         target: self,
         action: #selector(handleHerdrTap(_:)))
 
+    /// In-place text selection and its Copy menu; see
+    /// ``TerminalSelectionController``.
+    private lazy var selectionController = TerminalSelectionController(terminal: self)
+
     override var inputView: UIView? {
         terminalInputView
     }
@@ -1092,6 +1096,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         installTouchScrolling()
         installZoom()
         installDictationObserver()
+        selectionController.install(scrollGesture: touchScrollGesture)
     }
 
     @available(*, unavailable)
@@ -1207,6 +1212,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     /// settle without making terminal rendering wait on link collection.
     func reportViewportText() {
         guard let text = terminalSession.readViewportText() else { return }
+        selectionController.viewportTextDidChange(text)
         callbackBridge.viewportTextDidChange(text)
     }
 
@@ -1836,7 +1842,20 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         if action == #selector(paste(_:)) {
             return isLocalInputEnabled && clipboard.hasStrings()
         }
+        if action == #selector(copy(_:)), selectionController.hasSelection {
+            return true
+        }
         return super.canPerformAction(action, withSender: sender)
+    }
+
+    /// ⌘C and the standard edit menu copy the in-place selection when there
+    /// is one, and Ghostty's pointer selection otherwise.
+    override func copy(_ sender: Any?) {
+        if selectionController.copySelection() {
+            selectionController.clear()
+            return
+        }
+        super.copy(sender)
     }
 
     override func reloadInputViews() {
@@ -1850,6 +1869,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         // pass reports its grid.
         deferGridReportsForWindowResize()
         super.layoutSubviews()
+        selectionController.layout()
         reloadInputViewsAfterWindowResize()
         settleSurfaceScaleAfterResize()
     }
@@ -1924,6 +1944,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         responderGate.directTouchesBegan(Self.directTouchCount(in: touches))
+        selectionController.touchesBegan(touches)
         super.touchesBegan(touches, with: event)
     }
 
@@ -1946,6 +1967,11 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     override func gestureRecognizerShouldBegin(
         _ gestureRecognizer: UIGestureRecognizer
     ) -> Bool {
+        // The selection controller is its own recognizers' delegate; Ghostty's
+        // long-press rule below must not veto them.
+        if selectionController.owns(gestureRecognizer) {
+            return true
+        }
         if gestureRecognizer === touchScrollGesture {
             let velocity = touchScrollGesture.velocity(in: self)
             return abs(velocity.y) > abs(velocity.x)
@@ -2220,6 +2246,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     /// otherwise local `scroll_page_lines`. Shared by touch and the jump
     /// control so they cannot drift. `refs #268`.
     private func applyScroll(towardOlderContent: Bool, rowCount: Int) {
+        selectionController.clear()
         if let sequence = modeTracker.remoteScrollSequence(
             towardOlderContent: towardOlderContent,
             columns: terminalGridSize.columns,
@@ -2703,8 +2730,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
 }
 
 extension HeelerTerminalView: TerminalSurfaceOpenURLDelegate,
-    TerminalSurfaceTextSelectionRequestDelegate, TerminalSurfaceLifecycleDelegate,
-    TerminalSurfaceGridResizeDelegate
+    TerminalSurfaceLifecycleDelegate, TerminalSurfaceGridResizeDelegate
 {
     func terminalDidRequestOpenURL(_ url: String, kind _: TerminalOpenURLKind) {
         guard let url = TerminalLinkPolicy.url(for: url) else { return }
@@ -2718,6 +2744,7 @@ extension HeelerTerminalView: TerminalSurfaceOpenURLDelegate,
     /// tap-to-cell mapping and touch-scroll row heights don't fall back to the
     /// 8×16 default.
     func terminalDidResize(_ size: TerminalGridMetrics) {
+        selectionController.clear()
         terminalGridSize = (Int(size.columns), Int(size.rows))
         hasTerminalGridMetrics = true
         guard size.cellWidthPixels > 0, size.cellHeightPixels > 0 else { return }
@@ -2726,10 +2753,6 @@ extension HeelerTerminalView: TerminalSurfaceOpenURLDelegate,
         terminalCellSize = CGSize(
             width: CGFloat(size.cellWidthPixels) / scale,
             height: CGFloat(size.cellHeightPixels) / scale)
-    }
-
-    func terminalDidRequestTextSelection(_ request: TerminalTextSelectionRequest) {
-        TerminalTextSelectionPresenter.present(request, from: self)
     }
 
     func terminalDidAttachSurface(_: TerminalSurface) {}

@@ -221,6 +221,16 @@ A link still on screen also opens when tapped, in Attach and in a Shell
 Terminal alike; the Attach Link list is for the ones that have scrolled away.
 _Avoid_: recent link, visible link, link history
 
+**Terminal Selection**:
+Text selected in place on a terminal surface (Attach or Shell Terminal): a
+long press selects the word, or whole web link, under the finger, dragging
+extends it in reading order across rows, and handles adjust it. Its menu
+offers Copy, Select All, Select Text… (the visible rows in a sheet, for a
+finer selection), and Open Link and Copy Link on a link. It is Heeler's own
+selection over the visible rows, not Ghostty's pointer selection, and it ends
+on a tap, a scroll, a resize, or output that changes the selected rows.
+_Avoid_: highlight, text sheet (that's Select Text…), copy mode
+
 **Shell Terminal**:
 The full interactive terminal on an ordinary shell Pane, opened by Agent
 detail's edge-docked Workspace drawer, the Console's Terminals list, or Open

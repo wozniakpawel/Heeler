@@ -1,16 +1,18 @@
-import GhosttyTerminal
 import UIKit
 
+/// The Select Text sheet: the visible rows in a text view, for a selection
+/// finer than the in-place grid selection offers. Opened from that
+/// selection's edit menu with the selected range already highlighted.
 @MainActor
 enum TerminalTextSelectionPresenter {
-    static func present(_ request: TerminalTextSelectionRequest, from sourceView: UIView) {
+    static func present(text: String, anchorRange: NSRange?, from sourceView: UIView) {
         guard let presentingViewController = sourceView.nearestPresentingViewController else {
             return
         }
 
         let selection = TerminalTextSelectionViewController(
-            text: request.text,
-            anchorRange: request.anchorRange)
+            text: text,
+            anchorRange: anchorRange)
         let navigation = UINavigationController(rootViewController: selection)
         navigation.modalPresentationStyle = .pageSheet
         navigation.sheetPresentationController?.detents = [.large()]

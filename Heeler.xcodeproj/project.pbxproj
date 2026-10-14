@@ -582,6 +582,9 @@
 		BBEC3DD95CAD7EC6D8310E76 /* TerminalLinkHitTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4933C735B3C1C5E4E2A95752 /* TerminalLinkHitTest.swift */; };
 		AC3FE8F5D8FDE080E5B01A23 /* TerminalViewportText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F71C14860BFD03C00EC919 /* TerminalViewportText.swift */; };
 		7606DF3D42AFF846624F160A /* TerminalLinkHitTestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59255159ED8187BC87F4F8F1 /* TerminalLinkHitTestTests.swift */; };
+		B6D9965AA5B63B3823177D19 /* TerminalSelectionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2135AAE385B765A2BDD0209 /* TerminalSelectionController.swift */; };
+		BC31B127C93EAD38562CE047 /* TerminalTextSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE550598EF2C2017E3967127 /* TerminalTextSelection.swift */; };
+		59B21090E30008F0BA2E6EBF /* TerminalTextSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF97FEB53557D01105FD459 /* TerminalTextSelectionTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1175,6 +1178,9 @@
 		4933C735B3C1C5E4E2A95752 /* TerminalLinkHitTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLinkHitTest.swift; sourceTree = "<group>"; };
 		76F71C14860BFD03C00EC919 /* TerminalViewportText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalViewportText.swift; sourceTree = "<group>"; };
 		59255159ED8187BC87F4F8F1 /* TerminalLinkHitTestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLinkHitTestTests.swift; sourceTree = "<group>"; };
+		A2135AAE385B765A2BDD0209 /* TerminalSelectionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSelectionController.swift; sourceTree = "<group>"; };
+		BE550598EF2C2017E3967127 /* TerminalTextSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTextSelection.swift; sourceTree = "<group>"; };
+		7EF97FEB53557D01105FD459 /* TerminalTextSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTextSelectionTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1409,6 +1415,7 @@
 				856C56B29DCF048C09AF7C1C /* TerminalStatusDialogTests.swift */,
 				80C3966A26050D88C26229E9 /* TerminalSurfaceOrphanLayerTests.swift */,
 				293D10ABE217DF08F2830638 /* TerminalSurfaceRetentionTests.swift */,
+				7EF97FEB53557D01105FD459 /* TerminalTextSelectionTests.swift */,
 				921CA559141776BD0F02FDA7 /* TerminalThemeSettingsTests.swift */,
 				3A84F06EC2D4448E5DF72D76 /* TerminalTitleGlyphsTests.swift */,
 				9F11B5986980B4EE7E9760F9 /* TerminalWindowResizeCoalescingTests.swift */,
@@ -1464,7 +1471,9 @@
 				7EA83366C03C1D15B1DE8D1E /* TerminalOrphanSurfaceLayers.swift */,
 				847A1406F4AAEBF2F1EDFA1F /* TerminalScreenView.swift */,
 				0A5AC4A835B6FCE7731E251E /* TerminalScrollControl.swift */,
+				A2135AAE385B765A2BDD0209 /* TerminalSelectionController.swift */,
 				D1359A2D60189FA45F8DFB0D /* TerminalTextSafety.swift */,
+				BE550598EF2C2017E3967127 /* TerminalTextSelection.swift */,
 				19FF62E7BD9DC71E1172A472 /* TerminalTextSelectionPresenter.swift */,
 				578B695DF80C644E2D62060C /* TerminalTouchScroll.swift */,
 				76F71C14860BFD03C00EC919 /* TerminalViewportText.swift */,
@@ -2516,6 +2525,8 @@
 				FAB8EBB68349366543B0F8DC /* TerminalLineEdit.swift in Sources */,
 				BBEC3DD95CAD7EC6D8310E76 /* TerminalLinkHitTest.swift in Sources */,
 				AC3FE8F5D8FDE080E5B01A23 /* TerminalViewportText.swift in Sources */,
+				B6D9965AA5B63B3823177D19 /* TerminalSelectionController.swift in Sources */,
+				BC31B127C93EAD38562CE047 /* TerminalTextSelection.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2772,6 +2783,7 @@
 				728636AA14DAF54406667F6B /* WorktreeRemovalTests.swift in Sources */,
 				68A744B274C0474BFC3E2F71 /* TerminalDictationTests.swift in Sources */,
 				7606DF3D42AFF846624F160A /* TerminalLinkHitTestTests.swift in Sources */,
+				59B21090E30008F0BA2E6EBF /* TerminalTextSelectionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
