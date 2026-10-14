@@ -800,9 +800,21 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     private var textInputStorage = ""
     private var textInputSelection = NSRange(location: 0, length: 0)
     private var koreanResyllabification = HangulInput.ResyllabificationTransaction()
-    /// Korean commits recorded into the document up front, awaiting their
-    /// asynchronous echo from the byte sink (which must then be skipped).
-    private var preRecordedKoreanInput: [Data] = []
+    /// Text recorded into the document up front (Korean commits, a dictation
+    /// or replacement retype), awaiting its asynchronous echo from the byte
+    /// sink, which must then be skipped.
+    private var preRecordedInput: [Data] = []
+    /// A dictation in progress, holding the line as it stood when it began.
+    /// While set, keyboard edits change the document only; the PTY hears the
+    /// net change once, when it ends. See ``TerminalDictationTransaction``.
+    private var dictation: TerminalDictationTransaction?
+    private var dictationEndTask: Task<Void, Never>?
+    /// How long after the keyboard leaves dictation mode a final result may
+    /// still arrive and belong to the same dictation.
+    private static let dictationEndGracePeriod: Duration = .milliseconds(400)
+    /// Test seam standing in for the keyboard's input mode, which the suite
+    /// cannot switch to dictation.
+    var dictationInputModeOverride: Bool?
     private var terminalGridSize = (columns: 80, rows: 24)
     private var hasTerminalGridMetrics = false
     private var terminalCellSize = CGSize(width: 8, height: 16)
@@ -1012,6 +1024,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     @discardableResult
     override func resignFirstResponder() -> Bool {
         guard responderGate.mayResignFirstResponder else { return false }
+        endDictation()
         let resigned = super.resignFirstResponder()
         if resigned {
             onFirstResponderChange?()
@@ -1078,6 +1091,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         }
         installTouchScrolling()
         installZoom()
+        installDictationObserver()
     }
 
     @available(*, unavailable)
@@ -1285,6 +1299,9 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
 
     func setLocalInputEnabled(_ isEnabled: Bool) {
         guard isLocalInputEnabled != isEnabled else { return }
+        if !isEnabled {
+            endDictation()
+        }
         isLocalInputEnabled = isEnabled
         if !isEnabled {
             cancelKeyboardTransitionLayoutDeferral()
@@ -1322,6 +1339,9 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
 
     private func setLocalInputEnabledWithoutResigning(_ isEnabled: Bool) {
         guard isLocalInputEnabled != isEnabled else { return }
+        if !isEnabled {
+            endDictation()
+        }
         isLocalInputEnabled = isEnabled
         if !isEnabled {
             cancelKeyboardTransitionLayoutDeferral()
@@ -1366,6 +1386,10 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         if consumeMatchingInsertEcho(text) {
             return
         }
+        if ensureDictationTransaction() {
+            dictationEdit { replaceTextInputDocument(textInputSelection, with: text) }
+            return
+        }
         if applyArmedModifiers(toInsertedText: text) {
             return
         }
@@ -1388,6 +1412,14 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
             return
         }
         guard isLocalInputEnabled else { return }
+        if ensureDictationTransaction() {
+            dictationEdit {
+                if let range = textInputDeletionRange() {
+                    deleteFromTextInputStorage(in: range)
+                }
+            }
+            return
+        }
 
         // Ghostty already synchronizes marked-text deletion with UIKit. Raw
         // terminal deletion also changes the remote document, so it must send
@@ -1420,17 +1452,191 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         inputDelegate?.textDidChange(self)
     }
 
+    /// UIKit replaces a range of the document when dictation revises its live
+    /// hypothesis and when a text replacement rewrites what was typed. The
+    /// Ghostty layer answers any `replace` with a plain insert, which is how a
+    /// dictated sentence used to reach the shell once per revision.
+    override func replace(_ range: UITextRange, withText text: String) {
+        guard isLocalInputEnabled else { return }
+        guard super.markedTextRange == nil,
+              let range = range as? TerminalInputTextRange
+        else {
+            super.replace(range, withText: text)
+            return
+        }
+        let replaced = NSRange(location: range.location, length: range.length)
+        if ensureDictationTransaction() {
+            dictationEdit { replaceTextInputDocument(replaced, with: text) }
+            return
+        }
+        replaceCommittedText(in: replaced, with: text)
+    }
+
+    /// Replaces part of the committed line on the PTY: Backspaces back to the
+    /// first changed character, then the rest of the line typed again.
+    private func replaceCommittedText(in range: NSRange, with text: String) {
+        let baseline = textInputStorage
+        replaceTextInputDocument(range, with: text)
+        let edit = TerminalLineEdit.transition(from: baseline, to: textInputStorage)
+        guard !edit.isEmpty else { return }
+        koreanResyllabification.reset()
+        inputDelegate?.textWillChange(self)
+        inputDelegate?.selectionWillChange(self)
+        sendLineEdit(edit, from: baseline)
+        inputDelegate?.selectionDidChange(self)
+        inputDelegate?.textDidChange(self)
+    }
+
+    /// Rewrites `range` of the document, clamped to it, leaving the caret
+    /// after the new text.
+    private func replaceTextInputDocument(_ range: NSRange, with text: String) {
+        let storage = NSMutableString(string: textInputStorage)
+        let location = min(max(range.location, 0), storage.length)
+        let length = min(max(range.length, 0), storage.length - location)
+        storage.replaceCharacters(in: NSRange(location: location, length: length), with: text)
+        textInputStorage = storage as String
+        textInputSelection = NSRange(
+            location: location + (text as NSString).length, length: 0)
+    }
+
+    /// Types `edit` onto the PTY line that currently reads `baseline` and
+    /// leaves the document reading the result.
+    private func sendLineEdit(_ edit: TerminalLineEdit, from baseline: String) {
+        let kept = String(baseline.dropLast(edit.backspaces))
+        let segments = edit.typedSegments
+        if segments.count == 1 {
+            // Record the result now: UIKit reads the document straight after
+            // the edit, and the echo that records sent text arrives a turn
+            // later (see `recordTerminalInput`).
+            textInputStorage = kept + edit.text
+            if !edit.text.isEmpty {
+                preRecordedInput.append(Data(edit.text.utf8))
+            }
+        } else {
+            // Each Return truncates the recorded line as its echo lands, so
+            // the segments are left to the echo path to record in order.
+            textInputStorage = kept
+        }
+        textInputSelection = NSRange(location: textInputStorage.utf16.count, length: 0)
+        for _ in 0..<edit.backspaces {
+            super.deleteBackward()
+        }
+        for (index, segment) in segments.enumerated() {
+            if index > 0 {
+                super.insertText("\r")
+            }
+            if !segment.isEmpty {
+                super.insertText(segment)
+            }
+        }
+    }
+
+    // MARK: Dictation
+
+    /// Whether this keyboard edit belongs to a dictation. The first edit that
+    /// arrives while the keyboard is in dictation mode opens the transaction,
+    /// and every edit until it ends stays in the document.
+    private func ensureDictationTransaction() -> Bool {
+        if dictation != nil { return true }
+        guard isDictationInputModeActive, markedTextRange == nil else { return false }
+        dictation = TerminalDictationTransaction(baseline: textInputStorage)
+        koreanResyllabification.reset()
+        return true
+    }
+
+    /// The keyboard's current input mode is dictation. Live dictation keeps
+    /// the keyboard in that mode from the microphone tap until recognition
+    /// has delivered its result.
+    private var isDictationInputModeActive: Bool {
+        dictationInputModeOverride ?? (textInputMode?.primaryLanguage == "dictation")
+    }
+
+    /// Applies one keyboard edit to the document, telling UIKit about it the
+    /// way a text view does, and sends nothing.
+    private func dictationEdit(_ body: () -> Void) {
+        inputDelegate?.textWillChange(self)
+        inputDelegate?.selectionWillChange(self)
+        body()
+        inputDelegate?.selectionDidChange(self)
+        inputDelegate?.textDidChange(self)
+    }
+
+    /// The final recognition result. UIKit takes its live hypothesis out of
+    /// the document (or selects it) before this arrives; should it ever leave
+    /// the same text in place instead, the result is not inserted twice.
+    @objc func insertDictationResult(_ dictationResult: [UIDictationPhrase]) {
+        insertDictationText(dictationResult.map(\.text).joined())
+    }
+
+    func insertDictationText(_ text: String) {
+        guard isLocalInputEnabled else { return }
+        guard ensureDictationTransaction(), let dictation else {
+            if !text.isEmpty {
+                insertText(text)
+            }
+            return
+        }
+        let isAlreadyLive = !text.isEmpty
+            && dictation.liveText(in: textInputStorage)?.hasSuffix(text) == true
+        if !isAlreadyLive {
+            dictationEdit { replaceTextInputDocument(textInputSelection, with: text) }
+        }
+        endDictation()
+    }
+
+    @objc func dictationRecognitionFailed() {
+        endDictation()
+    }
+
+    private func installDictationObserver() {
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(textInputModeDidChange(_:)),
+            name: UITextInputMode.currentInputModeDidChangeNotification, object: nil)
+    }
+
+    /// The keyboard left dictation mode: the final result, when there is
+    /// one, follows within the grace period and ends the transaction itself.
+    @objc private func textInputModeDidChange(_ notification: Notification) {
+        guard dictation != nil else { return }
+        dictationEndTask?.cancel()
+        dictationEndTask = nil
+        guard !isDictationInputModeActive else { return }
+        dictationEndTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.dictationEndGracePeriod)
+            guard !Task.isCancelled, let self else { return }
+            dictationEndTask = nil
+            endDictation()
+        }
+    }
+
+    /// Sends what the dictation changed to the PTY and closes it.
+    private func endDictation() {
+        dictationEndTask?.cancel()
+        dictationEndTask = nil
+        guard let dictation else { return }
+        self.dictation = nil
+        let edit = dictation.edit(for: textInputStorage)
+        inputDelegate?.textWillChange(self)
+        inputDelegate?.selectionWillChange(self)
+        sendLineEdit(edit, from: dictation.baseline)
+        inputDelegate?.selectionDidChange(self)
+        inputDelegate?.textDidChange(self)
+    }
+
+    /// Whether a dictation is being buffered. Test seam.
+    var isDictating: Bool { dictation != nil }
+
     private func recordTerminalInput(_ data: Data) {
         guard !data.contains(0x1B), !data.contains(0x7F),
               !data.contains(where: { $0 < 0x20 && $0 != 0x0A && $0 != 0x0D }),
               let text = String(data: data, encoding: .utf8)
         else { return }
-        if let expected = preRecordedKoreanInput.first {
-            preRecordedKoreanInput.removeFirst()
+        if let expected = preRecordedInput.first {
+            preRecordedInput.removeFirst()
             if expected == data { return }
             // The sent bytes differ from the commit (e.g. a keyboard
             // protocol re-encoded them): stop matching and record normally.
-            preRecordedKoreanInput.removeAll()
+            preRecordedInput.removeAll()
         }
         recordCommittedText(text)
     }
@@ -1541,7 +1747,7 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     /// in between, so the document must already hold each commit.
     private func sendKoreanCommit(_ text: String) {
         recordCommittedText(text)
-        preRecordedKoreanInput.append(Data(text.utf8))
+        preRecordedInput.append(Data(text.utf8))
         super.insertText(text)
     }
 

@@ -76,6 +76,12 @@ Entries reference the pull request that made the change.
 
 ### Fixed
 
+- Dictating into Direct Input or a Shell Terminal no longer sends the
+  sentence once per revision as iOS refines what it heard, which left the
+  prompt full of repeated, garbled words. The words stay on the keyboard
+  until dictation finishes, then reach the terminal once; a dictated "new
+  line" is Return. A text replacement that rewrites typed text retypes only
+  the part that changed.
 - Removing a Host now ends its Live Activity and forgets its Live Activity
   setting, and Heeler no longer keeps retrying Live Activity updates for the
   removed Host. (#444)
