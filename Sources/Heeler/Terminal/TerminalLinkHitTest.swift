@@ -115,8 +115,7 @@ enum TerminalLinkHitTest {
             if let last = merged.last, last.row == span.row {
                 merged[merged.count - 1] = TerminalGridSpan(
                     row: last.row,
-                    columns: min(last.columns.lowerBound, span.columns.lowerBound)
-                        ...max(last.columns.upperBound, span.columns.upperBound))
+                    columns: min(last.columns.lowerBound, span.columns.lowerBound)...max(last.columns.upperBound, span.columns.upperBound))
             } else {
                 merged.append(span)
             }

@@ -395,7 +395,7 @@ extension TerminalSelectionController: UIGestureRecognizerDelegate {
     }
 }
 
-extension TerminalSelectionController: UIEditMenuInteractionDelegate {
+extension TerminalSelectionController: @MainActor UIEditMenuInteractionDelegate {
     func editMenuInteraction(
         _ interaction: UIEditMenuInteraction,
         menuFor configuration: UIEditMenuConfiguration,
