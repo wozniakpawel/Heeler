@@ -1210,6 +1210,38 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         callbackBridge.viewportTextDidChange(text)
     }
 
+    /// The visible rows as text, or nil before a surface exists.
+    func readViewportRows() -> TerminalViewportRows? {
+        guard let text = terminalSession.readViewportText() else { return nil }
+        return TerminalViewportRows(viewportText: text, columns: terminalGridSize.columns)
+    }
+
+    /// The web link printed under `point`, if the grid has been measured and
+    /// a URL covers that cell. See ``TerminalLinkHitTest``.
+    func link(at point: CGPoint) -> TerminalViewportLink? {
+        guard hasTerminalGridMetrics,
+            let cell = gridPointMapper.cell(at: point),
+            let grid = readViewportRows()
+        else { return nil }
+        return TerminalLinkHitTest.link(in: grid, row: cell.row, column: cell.column)
+    }
+
+    /// Hands `link` to the app's URL opener, under the same policy as a link
+    /// Ghostty reports. False when the policy refuses it.
+    @discardableResult
+    func open(_ link: TerminalViewportLink) -> Bool {
+        guard let url = TerminalLinkPolicy.url(for: link.target) else { return false }
+        onOpenLink?(url)
+        return true
+    }
+
+    /// Opens the web link under `point`. False when nothing there is one.
+    @discardableResult
+    func openLink(at point: CGPoint) -> Bool {
+        guard let link = link(at: point) else { return false }
+        return open(link)
+    }
+
     private func scheduleViewportSnapshot() {
         viewportSnapshotTask?.cancel()
         viewportSnapshotTask = Task { @MainActor [weak self] in
@@ -1920,12 +1952,15 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         }
         if gestureRecognizer === tapGesture {
             // A TUI wants every tap — to click, to raise the keyboard, or both.
-            // In the normal buffer only the input row is interactive. A running
-            // flick claims any tap regardless, to halt itself.
+            // In the normal buffer only the input row is interactive, plus any
+            // web link, which a tap opens. A running flick claims any tap
+            // regardless, to halt itself.
+            let location = tapGesture.location(in: self)
             return modeTracker.tracksMouse
                 || modeTracker.isAlternateScreen
                 || isTouchScrollMomentumRunning
-                || keyboardActivationRegion.contains(tapGesture.location(in: self))
+                || keyboardActivationRegion.contains(location)
+                || link(at: location) != nil
         }
         return super.gestureRecognizerShouldBegin(gestureRecognizer)
     }
@@ -2552,6 +2587,11 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
     }
 
     func handleTap(at location: CGPoint) {
+        // A link under the finger is what the tap meant, ahead of the click
+        // and the keyboard; a flick in progress still only stops.
+        if !isTouchScrollMomentumRunning, openLink(at: location) {
+            return
+        }
         switch tapAction(at: location) {
         case .haltMomentum:
             stopTouchScrollMomentum()

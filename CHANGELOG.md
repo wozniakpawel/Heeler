@@ -9,6 +9,8 @@ Entries reference the pull request that made the change.
 
 ### Added
 
+- Tap a web link in an Agent's terminal or a Shell Terminal to open it. Links
+  that fold across several rows of a narrow screen open whole.
 - Read and search Heeler's connection guides in English or Simplified Chinese
   on the new documentation site, with navigation for overlay networks, Jump
   Hosts, Host Routes, and Windows setup, and copy any guide as Markdown. (#442)

@@ -217,6 +217,8 @@ _Avoid_: takeover (that's herdr's flag, not our surface), connect
 An ordinary web URL observed in the terminal during one Agent detail session. It remains
 available after scrolling or reconnecting, but is forgotten when the user
 leaves the detail; a later session discovers whatever its terminal shows anew.
+A link still on screen also opens when tapped, in Attach and in a Shell
+Terminal alike; the Attach Link list is for the ones that have scrolled away.
 _Avoid_: recent link, visible link, link history
 
 **Shell Terminal**:

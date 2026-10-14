@@ -579,6 +579,9 @@
 		FFFDB4A4BE267D1C933B0CB7 /* TerminalSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3319D35C3BBCD2CB151843 /* TerminalSettings.swift */; };
 		FAB8EBB68349366543B0F8DC /* TerminalLineEdit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D34F14EA4DCE1CF77B7BBFF /* TerminalLineEdit.swift */; };
 		68A744B274C0474BFC3E2F71 /* TerminalDictationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBDBF4F2702CB73E95E16F05 /* TerminalDictationTests.swift */; };
+		BBEC3DD95CAD7EC6D8310E76 /* TerminalLinkHitTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4933C735B3C1C5E4E2A95752 /* TerminalLinkHitTest.swift */; };
+		AC3FE8F5D8FDE080E5B01A23 /* TerminalViewportText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F71C14860BFD03C00EC919 /* TerminalViewportText.swift */; };
+		7606DF3D42AFF846624F160A /* TerminalLinkHitTestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59255159ED8187BC87F4F8F1 /* TerminalLinkHitTestTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1169,6 +1172,9 @@
 		FF744C06B0CAE716C1EDFAF4 /* AgentFocusCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFocusCoordinatorTests.swift; sourceTree = "<group>"; };
 		7D34F14EA4DCE1CF77B7BBFF /* TerminalLineEdit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLineEdit.swift; sourceTree = "<group>"; };
 		DBDBF4F2702CB73E95E16F05 /* TerminalDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalDictationTests.swift; sourceTree = "<group>"; };
+		4933C735B3C1C5E4E2A95752 /* TerminalLinkHitTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLinkHitTest.swift; sourceTree = "<group>"; };
+		76F71C14860BFD03C00EC919 /* TerminalViewportText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalViewportText.swift; sourceTree = "<group>"; };
+		59255159ED8187BC87F4F8F1 /* TerminalLinkHitTestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLinkHitTestTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1395,6 +1401,7 @@
 				5B393A4DA056DD5941212E67 /* TerminalInputTraitsTests.swift */,
 				1B99CB61015DC220A2D9306A /* TerminalKeyModifiersTests.swift */,
 				7CCE32D8F2A1A12B183B3DA5 /* TerminalKeysKeyboardTests.swift */,
+				59255159ED8187BC87F4F8F1 /* TerminalLinkHitTestTests.swift */,
 				C0EAAEDF57252FEA74A93C6A /* TerminalListPresentationTests.swift */,
 				D98C291FF5279ECEDF232B5D /* TerminalMessageJumpControllerTests.swift */,
 				8D6490F9D4A3ECF0F9899D1A /* TerminalMouseReportingTests.swift */,
@@ -1451,6 +1458,7 @@
 				7CF0F9F0EDF8757DC1D275D2 /* TerminalKeyboardInset.swift */,
 				BC019B4A164A7B01F1D46344 /* TerminalKeysKeyboard.swift */,
 				7D34F14EA4DCE1CF77B7BBFF /* TerminalLineEdit.swift */,
+				4933C735B3C1C5E4E2A95752 /* TerminalLinkHitTest.swift */,
 				698E712B4BE15626800C366F /* TerminalMessageJumpController.swift */,
 				4997A79DA8D98F7BA97E60F6 /* TerminalMouseReporting.swift */,
 				7EA83366C03C1D15B1DE8D1E /* TerminalOrphanSurfaceLayers.swift */,
@@ -1459,6 +1467,7 @@
 				D1359A2D60189FA45F8DFB0D /* TerminalTextSafety.swift */,
 				19FF62E7BD9DC71E1172A472 /* TerminalTextSelectionPresenter.swift */,
 				578B695DF80C644E2D62060C /* TerminalTouchScroll.swift */,
+				76F71C14860BFD03C00EC919 /* TerminalViewportText.swift */,
 				5369CA7EA3124D9C5734F700 /* TerminalWindowResizeTracker.swift */,
 			);
 			path = Terminal;
@@ -2505,6 +2514,8 @@
 				9AA26D72B34CCF2E34C8C675 /* WorktreeDetailView.swift in Sources */,
 				459B7EF40BBAF37071D7539C /* WorktreeRemoval.swift in Sources */,
 				FAB8EBB68349366543B0F8DC /* TerminalLineEdit.swift in Sources */,
+				BBEC3DD95CAD7EC6D8310E76 /* TerminalLinkHitTest.swift in Sources */,
+				AC3FE8F5D8FDE080E5B01A23 /* TerminalViewportText.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2760,6 +2771,7 @@
 				03A4895D457152CA4D31FC5A /* WorktreeDetailStoreTests.swift in Sources */,
 				728636AA14DAF54406667F6B /* WorktreeRemovalTests.swift in Sources */,
 				68A744B274C0474BFC3E2F71 /* TerminalDictationTests.swift in Sources */,
+				7606DF3D42AFF846624F160A /* TerminalLinkHitTestTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
